@@ -1,10 +1,39 @@
 export type MindType = 'peaceful' | 'flutter' | 'tired' | 'complex';
 export type WalkPath = 'forest' | 'water';
 
+export type BackgroundId = 'room' | 'entrance' | 'transit' | 'street_park' | 'desk' | 'abstract';
+
+export interface SceneCandidate {
+  label: string;
+  backgroundId: BackgroundId;
+  primaryObject: string;
+  primaryState: string;
+  secondaryObject?: string;
+  secondaryState?: string;
+  excerptSentence?: string;
+}
+
+export interface DiaryIllustrationData {
+  backgroundId: BackgroundId;
+  primaryObject: string;
+  primaryState: string;
+  secondaryObject?: string;
+  secondaryState?: string;
+  lighting: MindType | 'relieved' | 'neutral';
+  weather?: 'sunny' | 'rainy' | 'night' | 'day';
+  candidateScenes: SceneCandidate[];
+  selectedSceneIndex: number;
+  caption: string;
+  version: number;
+  seed: number;
+}
+
 export interface MindRecord {
   date: string; // 'YYYY-MM-DD' (Asia/Seoul)
   mind: MindType;
-  memo?: string;
+  memo?: string; // 일기 본문 (기존 메모와 호환)
+  diaryText?: string;
+  illustration?: DiaryIllustrationData;
   walkPath?: WalkPath;
   walkCompleted?: boolean;
   createdAt: string;

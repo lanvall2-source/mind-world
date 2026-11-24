@@ -17,6 +17,7 @@ import {
   loadMindRecords,
   saveMindRecords,
 } from './lib/mindStore';
+import { parseDiaryToIllustration } from './lib/illustrationParser';
 
 export const App: React.FC = () => {
   // Current Seoul date (rechecked periodically or on focus)
@@ -66,7 +67,7 @@ export const App: React.FC = () => {
   const [inspectingMind, setInspectingMind] = useState<MindType | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
 
-  // Handlers
+  // Handlers for Feeling Selection
   const handleSelectMind = useCallback((newMind: MindType) => {
     const nowIso = new Date().toISOString();
     setRecords((prev) => {
@@ -74,10 +75,20 @@ export const App: React.FC = () => {
       let updated: MindRecord[];
       if (existingIdx >= 0) {
         // Update today's existing record
+        const oldRec = prev[existingIdx];
+        // If an illustration already exists, re-tint lighting to new emotion
+        let updatedIllustration = oldRec.illustration;
+        if (updatedIllustration) {
+          updatedIllustration = {
+            ...updatedIllustration,
+            lighting: newMind,
+          };
+        }
         updated = [...prev];
         updated[existingIdx] = {
-          ...updated[existingIdx],
+          ...oldRec,
           mind: newMind,
+          illustration: updatedIllustration,
           updatedAt: nowIso,
         };
       } else {
@@ -96,17 +107,78 @@ export const App: React.FC = () => {
     setIsFinishedToday(false);
   }, [todayStr]);
 
-  const handleUpdateMemo = useCallback((memoText: string) => {
+  // Save diary with dynamic illustration
+  const handleSaveWithIllustration = useCallback((diaryText: string) => {
     if (!todayRecord) return;
     const nowIso = new Date().toISOString();
+    const illustration = parseDiaryToIllustration(diaryText, todayRecord.mind, todayRecord.illustration);
+
     setRecords((prev) => {
       const updated = prev.map((r) =>
-        r.date === todayStr ? { ...r, memo: memoText, updatedAt: nowIso } : r
+        r.date === todayStr
+          ? {
+              ...r,
+              memo: diaryText,
+              diaryText,
+              illustration,
+              updatedAt: nowIso,
+            }
+          : r
       );
       saveMindRecords(updated);
       return updated;
     });
   }, [todayRecord, todayStr]);
+
+  // Save diary text only (no illustration)
+  const handleSaveTextOnly = useCallback((diaryText: string) => {
+    if (!todayRecord) return;
+    const nowIso = new Date().toISOString();
+
+    setRecords((prev) => {
+      const updated = prev.map((r) =>
+        r.date === todayStr
+          ? {
+              ...r,
+              memo: diaryText,
+              diaryText,
+              illustration: undefined, // cleared or untouched
+              updatedAt: nowIso,
+            }
+          : r
+      );
+      saveMindRecords(updated);
+      return updated;
+    });
+  }, [todayRecord, todayStr]);
+
+  // Switch scene candidate for a specific record
+  const handleSwitchScene = useCallback((dateStr: string, sceneIndex: number) => {
+    setRecords((prev) => {
+      const updated = prev.map((r) => {
+        if (r.date !== dateStr || !r.illustration) return r;
+        const candidates = r.illustration.candidateScenes || [];
+        if (sceneIndex < 0 || sceneIndex >= candidates.length) return r;
+
+        const candidate = candidates[sceneIndex];
+        return {
+          ...r,
+          illustration: {
+            ...r.illustration,
+            backgroundId: candidate.backgroundId,
+            primaryObject: candidate.primaryObject,
+            primaryState: candidate.primaryState,
+            secondaryObject: candidate.secondaryObject,
+            caption: candidate.excerptSentence || r.illustration.caption,
+            selectedSceneIndex: sceneIndex,
+          },
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      saveMindRecords(updated);
+      return updated;
+    });
+  }, []);
 
   // Walk Handlers
   const handleStartWalk = useCallback(() => {
@@ -129,7 +201,6 @@ export const App: React.FC = () => {
   const handleObjectClick = useCallback((objectKey: string) => {
     if (walkMode && walkStep === 'seeking_object' && activeScene?.targetObject === objectKey) {
       setWalkStep('viewing_scene');
-      // Mark walk completed for today
       setRecords((prev) => {
         const updated = prev.map((r) =>
           r.date === todayStr ? { ...r, walkPath: activePath || undefined, walkCompleted: true } : r
@@ -209,14 +280,17 @@ export const App: React.FC = () => {
           />
         ) : todayRecord ? (
           <TodayMindCard
+            todayDateStr={todayStr}
             mind={todayRecord.mind}
-            currentMemo={todayRecord.memo || ''}
+            currentText={todayRecord.memo || todayRecord.diaryText || ''}
+            illustration={todayRecord.illustration}
             isFinishedToday={isFinishedToday}
-            onUpdateMemo={handleUpdateMemo}
+            onSaveWithIllustration={handleSaveWithIllustration}
+            onSaveTextOnly={handleSaveTextOnly}
+            onSwitchScene={(idx) => handleSwitchScene(todayStr, idx)}
             onStartWalk={handleStartWalk}
             onFinishToday={() => setIsFinishedToday(true)}
             onChangeMind={() => {
-              // Allows user to re-open feeling picker by temporary local state if needed
               setRecords((prev) => {
                 const updated = prev.filter((r) => r.date !== todayStr);
                 saveMindRecords(updated);
@@ -241,13 +315,14 @@ export const App: React.FC = () => {
         onDeleteRecord={handleDeleteRecord}
       />
 
-      {/* 5. History Drawer */}
+      {/* 5. History Drawer & Diary Detail Modal */}
       <HistoryDrawer
         isOpen={isHistoryOpen}
         records={records}
         onClose={() => setIsHistoryOpen(false)}
         onDeleteRecord={handleDeleteRecord}
         onResetAll={handleResetAll}
+        onSwitchScene={handleSwitchScene}
       />
     </div>
   );
