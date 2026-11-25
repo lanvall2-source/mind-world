@@ -79,7 +79,7 @@ export const DiaryDetailModal: React.FC<DiaryDetailModalProps> = ({
 
                   {showScenePicker && (
                     <div className="flex flex-wrap gap-1.5 justify-center mt-2 animate-fade-in">
-                      {candidates.map((c, idx) => {
+                      {candidates.map((c: any, idx: number) => {
                         const isSelected = illustration.selectedSceneIndex === idx;
                         return (
                           <button

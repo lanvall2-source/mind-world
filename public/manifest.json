@@ -1,0 +1,16 @@
+{
+  "name": "마음이 자라는 세계",
+  "short_name": "마음세계",
+  "description": "오늘의 마음 일기를 기록하고 나만의 세계를 키우는 힐링 다이어리",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EFECE3",
+  "theme_color": "#3d5a45",
+  "icons": [
+    {
+      "src": "/icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
