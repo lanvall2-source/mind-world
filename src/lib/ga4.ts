@@ -11,7 +11,7 @@ let lastPath: string | null = null;
 export function initGA4(measurementId?: string) {
   const id =
     measurementId ??
-    ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_GA_MEASUREMENT_ID);
+    ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_GA_MEASUREMENT_ID || 'G-S2LV1G93VY');
   if (!id || typeof window === 'undefined' || initializedId === id) return;
 
   try {
